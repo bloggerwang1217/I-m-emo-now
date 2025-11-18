@@ -10,34 +10,28 @@ Create an experience-sampling app with local storage that collects emotional and
 
 ---
 
-## ⚠️ Requirements Needing Clarification
-
-Before implementation, the following requirements need clarification:
+## ✅ Clarified Requirements
 
 ### 1. GPS Tracking Frequency
-- **Question:** Do you want continuous GPS tracking throughout the day, or only when responding to the 3x daily notifications?
-- **Impact:** Determines if we need background location tracking vs. one-time location capture
-- **Related:** The "keep awake" notification requirement
+- **CONFIRMED:** GPS tracked ONLY during the 3x daily check-ins
+- No continuous background GPS tracking
+- One-time location capture when user submits data
 
 ### 2. Background Service Purpose
-- **Question:** Is the "keep awake" notification for:
-  - Continuous GPS tracking in the background? OR
-  - Just ensuring the 3x daily notifications fire reliably?
-- **Impact:** Affects battery usage, permissions, and background task implementation
+- **CONFIRMED:** Notification delivery reliability (frontend only)
+- NO backend force push needed
+- NO continuous GPS tracking in background
+- Focus on ensuring the 3x daily notifications fire reliably
 
-### 3. Video Export Format
-- **Question:** How should the 1-second vlog videos be exported?
-  - In a separate zip file alongside the CSV?
-  - With filenames referenced in a 5th CSV column (`video_filename`)?
-  - Not exported at all (CSV only)?
-- **Impact:** Determines export logic and file bundling approach
+### 3. Video Storage
+- **CONFIRMED:** Videos saved to user's media library using expo-media-library
+- Videos will be accessible in the user's photo gallery/camera roll
+- Metadata stored in SQLite for reference
 
-### 4. Emotion Score Dimensions
-- **Question:** Should the questionnaire capture:
-  - ONE single emotion score (1-5 scale)? OR
-  - Multiple dimensions (valence, arousal, energy) as separate CSV columns?
-- **Question:** What does `emo_score` specifically represent?
-- **Impact:** Affects UI design and database schema
+### 4. Emotion Score
+- **CONFIRMED:** Single emotion score on 1-5 scale with emojis
+- Visual emoji slider interface
+- **TODO:** Research and select appropriate package for emoji slide functionality
 
 ---
 
@@ -47,13 +41,10 @@ Before implementation, the following requirements need clarification:
 
 #### A. Simple Sentiment Questionnaire
 **Type:** Structured active/foreground data
-- 5-point emotion scale (very happy → very sad)
+- 5-point emotion scale (1-5)
 - Visual representation with emoji faces
-- Slider or button selection interface
-- **⚠️ UNCLEAR:** CSV has single `emo_score` column, but multiple dimensions were mentioned:
-  - Is it ONE single emotion score (1-5)? OR
-  - Multiple dimensions (arousal, valence, energy) in separate CSV columns?
-  - What exactly does `emo_score` represent?
+- Emoji slider interface (research appropriate package for implementation)
+- Single `emo_score` value (1-5) stored in database
 
 #### B. 1-Second Vlog Recorder
 **Type:** Unstructured active/foreground data
@@ -63,15 +54,17 @@ Before implementation, the following requirements need clarification:
 - Associated with timestamp and session
 
 #### C. GPS Coordinates
-**Type:** Structured passive/background data
-- Latitude and longitude capture
+**Type:** Structured passive data (captured during check-ins only)
+- Latitude and longitude capture ONLY during 3x daily check-ins
+- NO continuous background tracking
 - Automatic collection when user submits data
 - Location permissions handling
 - Privacy considerations
 
 ### 2. Data Storage
 - Local SQLite database for structured data (questionnaire responses, GPS, timestamps)
-- Local file system for unstructured data (video files)
+- expo-media-library for video storage (saves to user's media library/camera roll)
+- Videos accessible in user's photo gallery
 - Data schema design for relational structure
 
 ### 3. Data Export
@@ -84,22 +77,19 @@ Before implementation, the following requirements need clarification:
   ```
 - Each row represents one data collection session
 - Share via native sharing interface
-- **⚠️ UNCLEAR:** How are 1-second vlog videos exported?
-  - Separate zip file with CSV?
-  - Reference in CSV (video_filename column)?
-  - Not exported?
+- **Videos:** Stored in user's media library via expo-media-library
+  - Accessible directly from camera roll/photo gallery
+  - Can be included in export or referenced by timestamp
 
-### 4. Notifications & Background Service
+### 4. Notifications (Frontend Only)
 - Schedule 3 daily notifications to prompt data collection
 - User-customizable notification times
 - Reminder system implementation
-- **Foreground Service / "Keep Awake" Notification:**
-  - Persistent notification to prevent OS from killing the app
-  - Required for background GPS tracking (if continuous)
-  - Ensures notification delivery reliability
-  - **⚠️ UNCLEAR:** Is this for:
-    - Continuous GPS tracking throughout the day? OR
-    - Just ensuring the 3x daily notifications fire reliably?
+- **Frontend notification delivery:**
+  - Focus on reliable local notification delivery
+  - NO backend force push required
+  - NO continuous background GPS tracking
+  - Notifications trigger app to open for check-in
 
 ---
 
@@ -119,9 +109,9 @@ Before implementation, the following requirements need clarification:
    - Purpose: Recording 1-second vlogs
    - Features: Camera access, video recording, save to local storage
 
-4. **expo-file-system** OR **expo-media-library**
-   - Purpose: Video file storage and management
-   - Features: Save videos, retrieve videos for export
+4. **expo-media-library**
+   - Purpose: Video file storage in user's media library
+   - Features: Save videos to camera roll/photo gallery, manage media permissions
 
 5. **expo-sharing**
    - Purpose: Exporting collected data
@@ -140,10 +130,13 @@ Before implementation, the following requirements need clarification:
 8. **@react-native-async-storage/async-storage**
    - Purpose: Store user preferences (notification times, settings)
 
-9. **expo-task-manager** + **expo-background-fetch**
-   - Purpose: Background tasks and foreground service
-   - Features: Keep-alive notification, background GPS tracking (if needed)
-   - Platform: Android foreground service, iOS background fetch
+9. **Emoji Slider Package** (Research needed)
+   - Purpose: Interactive emoji slider for 1-5 emotion rating
+   - Potential options to evaluate:
+     - @react-native-community/slider with custom emoji overlay
+     - react-native-emoji-selector
+     - Custom implementation with react-native-gesture-handler
+   - Features: Touch-friendly emoji selection, visual feedback
 
 ---
 
@@ -287,51 +280,53 @@ CREATE TABLE settings (
 - [ ] Test database connection and basic CRUD operations
 
 ### Phase 2: Emotion Questionnaire UI
+- [ ] Research and select emoji slider package
 - [ ] Create home screen with emotion scale component
-- [ ] Design 5-point emotion selector (emoji faces + slider)
+- [ ] Design 5-point emotion selector with emoji slider (1-5 scale)
 - [ ] Implement state management for emotion selection
 - [ ] Add timestamp capture
 - [ ] Create submit button with validation
 
 ### Phase 3: Camera & Video Recording
 - [ ] Create camera screen component
-- [ ] Request camera permissions
+- [ ] Request camera and media library permissions
 - [ ] Implement 1-second video recording
 - [ ] Auto-stop recording after 1 second
-- [ ] Save video to local file system
-- [ ] Generate unique filenames for videos
-- [ ] Link video filename to session in database
+- [ ] Save video to user's media library using expo-media-library
+- [ ] Store video metadata (timestamp, album name) in database
+- [ ] Verify videos appear in camera roll/photo gallery
 
-### Phase 4: GPS Location Tracking
+### Phase 4: GPS Location (Check-in Only)
 - [ ] Request location permissions
-- [ ] Implement location capture on data submission
+- [ ] Implement location capture ONLY during check-in submission
+- [ ] NO continuous background tracking
 - [ ] Handle location errors/fallbacks
 - [ ] Store lat/lng in database with session
 - [ ] Privacy considerations and user communication
 
-### Phase 5: Notifications System & Background Service
+### Phase 5: Notifications System (Frontend Only)
 - [ ] Request notification permissions
-- [ ] Create notification scheduler (3x daily)
+- [ ] Create notification scheduler (3x daily, local notifications)
 - [ ] Implement settings screen for customizing notification times
 - [ ] Handle notification tap to open app
-- [ ] **Implement foreground service / "keep awake" notification**
-  - [ ] Android: Configure foreground service in app.json
-  - [ ] Set up persistent notification
-  - [ ] Implement background task manager (if continuous GPS needed)
-- [ ] Test notification delivery on device
+- [ ] Focus on reliable local notification delivery
+- [ ] NO backend force push implementation needed
+- [ ] Test notification delivery on device (ensure reliability)
 
 ### Phase 6: Data History & Visualization
 - [ ] Create history screen
 - [ ] Query and display all sessions from database
 - [ ] Show emotion, timestamp, location for each entry
-- [ ] Implement video playback for vlogs
+- [ ] Implement video playback for vlogs (from media library)
+- [ ] Link to videos stored in camera roll
 - [ ] Add date filtering/sorting options
 
 ### Phase 7: Data Export Functionality
 - [ ] Create export function to query all data
 - [ ] Convert SQLite data to CSV format
-- [ ] Bundle video files with structured data
-- [ ] Implement sharing via expo-sharing
+- [ ] Access video files from media library for export (optional)
+- [ ] Implement CSV sharing via expo-sharing
+- [ ] Document that videos are in user's camera roll
 - [ ] Test export on real device
 
 ### Phase 8: UI/UX Polish & Design System Implementation
@@ -425,7 +420,8 @@ Based on slide 12, the GitHub repository must contain:
 ### Permissions
 - Camera permission (for vlogs)
 - Microphone permission (for video audio)
-- Location permission (for GPS)
+- Media library permission (for saving videos to camera roll)
+- Location permission (for GPS during check-ins only)
 - Notification permission (for 3x daily prompts)
 - Handle permission denials gracefully
 
@@ -450,7 +446,7 @@ Based on slide 12, the GitHub repository must contain:
 - Optimize video file size (1-second should be small)
 - Efficient database queries
 - Lazy loading for history view
-- Background task optimization for GPS
+- Quick location capture during check-ins (no background tracking overhead)
 
 ---
 
