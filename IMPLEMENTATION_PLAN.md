@@ -10,6 +10,37 @@ Create an experience-sampling app with local storage that collects emotional and
 
 ---
 
+## ⚠️ Requirements Needing Clarification
+
+Before implementation, the following requirements need clarification:
+
+### 1. GPS Tracking Frequency
+- **Question:** Do you want continuous GPS tracking throughout the day, or only when responding to the 3x daily notifications?
+- **Impact:** Determines if we need background location tracking vs. one-time location capture
+- **Related:** The "keep awake" notification requirement
+
+### 2. Background Service Purpose
+- **Question:** Is the "keep awake" notification for:
+  - Continuous GPS tracking in the background? OR
+  - Just ensuring the 3x daily notifications fire reliably?
+- **Impact:** Affects battery usage, permissions, and background task implementation
+
+### 3. Video Export Format
+- **Question:** How should the 1-second vlog videos be exported?
+  - In a separate zip file alongside the CSV?
+  - With filenames referenced in a 5th CSV column (`video_filename`)?
+  - Not exported at all (CSV only)?
+- **Impact:** Determines export logic and file bundling approach
+
+### 4. Emotion Score Dimensions
+- **Question:** Should the questionnaire capture:
+  - ONE single emotion score (1-5 scale)? OR
+  - Multiple dimensions (valence, arousal, energy) as separate CSV columns?
+- **Question:** What does `emo_score` specifically represent?
+- **Impact:** Affects UI design and database schema
+
+---
+
 ## Core Features
 
 ### 1. Data Collection (3 times per day)
@@ -19,10 +50,10 @@ Create an experience-sampling app with local storage that collects emotional and
 - 5-point emotion scale (very happy → very sad)
 - Visual representation with emoji faces
 - Slider or button selection interface
-- Additional dimensions could include:
-  - Arousal level (relaxed ↔ awake)
-  - Valence (happy ↔ sad)
-  - Energy level
+- **⚠️ UNCLEAR:** CSV has single `emo_score` column, but multiple dimensions were mentioned:
+  - Is it ONE single emotion score (1-5)? OR
+  - Multiple dimensions (arousal, valence, energy) in separate CSV columns?
+  - What exactly does `emo_score` represent?
 
 #### B. 1-Second Vlog Recorder
 **Type:** Unstructured active/foreground data
@@ -45,14 +76,30 @@ Create an experience-sampling app with local storage that collects emotional and
 
 ### 3. Data Export
 - Export functionality to share collected data
-- Export all data types together
-- Format: CSV for structured data, bundled videos
+- **CSV Format Specification:**
+  ```
+  timestamp,gps_x,gps_y,emo_score
+  2025-01-15T08:30:00Z,42.3601,-71.0589,3
+  2025-01-15T14:15:00Z,42.3656,-71.0623,4
+  ```
+- Each row represents one data collection session
 - Share via native sharing interface
+- **⚠️ UNCLEAR:** How are 1-second vlog videos exported?
+  - Separate zip file with CSV?
+  - Reference in CSV (video_filename column)?
+  - Not exported?
 
-### 4. Notifications
+### 4. Notifications & Background Service
 - Schedule 3 daily notifications to prompt data collection
 - User-customizable notification times
 - Reminder system implementation
+- **Foreground Service / "Keep Awake" Notification:**
+  - Persistent notification to prevent OS from killing the app
+  - Required for background GPS tracking (if continuous)
+  - Ensures notification delivery reliability
+  - **⚠️ UNCLEAR:** Is this for:
+    - Continuous GPS tracking throughout the day? OR
+    - Just ensuring the 3x daily notifications fire reliably?
 
 ---
 
@@ -93,6 +140,11 @@ Create an experience-sampling app with local storage that collects emotional and
 8. **@react-native-async-storage/async-storage**
    - Purpose: Store user preferences (notification times, settings)
 
+9. **expo-task-manager** + **expo-background-fetch**
+   - Purpose: Background tasks and foreground service
+   - Features: Keep-alive notification, background GPS tracking (if needed)
+   - Platform: Android foreground service, iOS background fetch
+
 ---
 
 ## App Architecture
@@ -112,6 +164,66 @@ app/
 ### Navigation Pattern
 - **Drawer Navigation:** Main app sections (Home, History, Settings)
 - **Stack Navigation:** For modal-like screens (Camera view)
+
+---
+
+## Design System: "Atmospheric Sci-Fi"
+
+### Core Philosophy
+**Minimalist, atmospheric, and introspective** - heavily inspired by **Flexoki** and **One Hunter** color palettes.
+
+- **NOT:** Bright, flashy, cartoonish, or gamified with loud animations
+- **IS:** Calm, focused, mature, sophisticated - "lo-fi sci-fi" aesthetic
+- **Reference:** Think *Dune* or *2001: A Space Odyssey*, not *Star Wars*
+- **Keywords:** Inky, Desaturated, Text-Centric, High-Contrast (but soft), Minimalist, Elegant
+
+### Color Palette (One Hunter System)
+
+| Role | Color Name | Hex Code | Usage |
+|:-----|:-----------|:---------|:------|
+| **Background (The Void)** | Inky Dark | `#1D2021` | Very dark, desaturated charcoal. Not pure black. |
+| **Primary Text (Starlight)** | Bone / Ivory | `#E6E0C2` | Main text color. Soft off-white for easy reading. |
+| **Secondary Text (Metadata)** | Slate Grey | `#928374` | Dates, timestamps, helper text, disabled states. |
+| **Accent 1 (Action)** | Muted Gold | `#D79921` | Primary buttons, sliders, active states, positive moods. |
+| **Accent 2 (Highlight)** | Desaturated Teal | `#458588` | Challenge alerts, links, interactive elements. |
+| **Accent 3 (Calm/Reflect)** | Muted Green | `#98971A` | Calm/reflective moods, success states. |
+| **Accent 4 (Alert/Log)** | Soft Rust | `#CC241D` | Negative moods, delete confirmation, critical alerts. |
+
+### Typography
+
+**Font Family:** **Inter** (primary choice) or **Manrope** (fallback)
+
+- **Headings (h1, h2):**
+  - Font: Inter, Weight: 600 (Semibold)
+  - Color: Primary Text (Ivory `#E6E0C2`)
+
+- **Body Text (p):**
+  - Font: Inter, Weight: 400 (Regular)
+  - Color: Primary Text (Ivory `#E6E0C2`)
+
+- **Helper/Meta Text:**
+  - Font: Inter, Weight: 400 (Regular)
+  - Color: Secondary Text (Slate Grey `#928374`)
+
+### UI Elements
+
+**Buttons:**
+- **Primary:** Solid fill with Accent 1 (Gold `#D79921`). Text color: Background (Inky Dark `#1D2021`)
+- **Secondary:** Outline only. Border: Secondary Text (Slate Grey `#928374`). Text: Primary Text (Ivory)
+
+**Icons:**
+- Use thin, linear icon sets: **Heroicons** or **Feather Icons**
+- Single color: Primary Text or Secondary Text
+- No filled icons
+
+**Cards/Modals:**
+- No box-shadows
+- Border radius: None or very subtle (max 4px)
+- Background: Slightly lighter than main background (e.g., `#282828`)
+
+**Form Inputs:**
+- Simple underline/border using Secondary Text (Slate Grey)
+- Focus state: Border changes to Accent 1 (Gold)
 
 ---
 
@@ -197,11 +309,15 @@ CREATE TABLE settings (
 - [ ] Store lat/lng in database with session
 - [ ] Privacy considerations and user communication
 
-### Phase 5: Notifications System
+### Phase 5: Notifications System & Background Service
 - [ ] Request notification permissions
 - [ ] Create notification scheduler (3x daily)
 - [ ] Implement settings screen for customizing notification times
 - [ ] Handle notification tap to open app
+- [ ] **Implement foreground service / "keep awake" notification**
+  - [ ] Android: Configure foreground service in app.json
+  - [ ] Set up persistent notification
+  - [ ] Implement background task manager (if continuous GPS needed)
 - [ ] Test notification delivery on device
 
 ### Phase 6: Data History & Visualization
@@ -218,10 +334,18 @@ CREATE TABLE settings (
 - [ ] Implement sharing via expo-sharing
 - [ ] Test export on real device
 
-### Phase 8: UI/UX Polish
-- [ ] Improve visual design and consistency
+### Phase 8: UI/UX Polish & Design System Implementation
+- [ ] **Implement "Atmospheric Sci-Fi" Design System:**
+  - [ ] Set up color constants (One Hunter palette)
+  - [ ] Import and configure Inter font family
+  - [ ] Apply color scheme to all screens (Background: `#1D2021`)
+  - [ ] Style all buttons (Primary: Gold, Secondary: Outlined)
+  - [ ] Configure icon library (Heroicons or Feather Icons)
+  - [ ] Apply typography styles (headings, body, meta text)
+  - [ ] Style form inputs with minimalist borders
+  - [ ] Update cards/modals with subtle backgrounds
 - [ ] Add loading states and error handling
-- [ ] Implement smooth transitions and animations
+- [ ] Implement smooth transitions (keep minimal/subtle)
 - [ ] Add user feedback (toasts, confirmations)
 - [ ] Accessibility improvements
 
@@ -347,11 +471,23 @@ Based on slide 12, the GitHub repository must contain:
 
 ## Resources
 
+### Expo SDK Documentation
 - [Expo Notifications Documentation](https://docs.expo.dev/versions/latest/sdk/notifications/)
 - [Expo SQLite Documentation](https://docs.expo.dev/versions/latest/sdk/sqlite/)
 - [Expo Camera Documentation](https://docs.expo.dev/versions/latest/sdk/camera/)
 - [Expo Location Documentation](https://docs.expo.dev/versions/latest/sdk/location/)
 - [Expo Router Documentation](https://expo.github.io/router/docs/)
+- [Expo Task Manager](https://docs.expo.dev/versions/latest/sdk/task-manager/) (Background tasks)
+- [Expo Background Fetch](https://docs.expo.dev/versions/latest/sdk/background-fetch/) (Keep-alive)
+
+### Design System Resources
+- [Flexoki Color Palette](https://stephango.com/flexoki) (Design inspiration)
+- [One Hunter Colorscheme](https://github.com/joshdick/onedark.vim) (Color reference)
+- [Inter Font](https://fonts.google.com/specimen/Inter) (Primary typeface)
+- [Heroicons](https://heroicons.com/) (Icon library option)
+- [Feather Icons](https://feathericons.com/) (Icon library option)
+
+### Study Reference
 - [EmoGo Study Reference](https://www.healthyminds.org) (Original inspiration)
 
 ---
