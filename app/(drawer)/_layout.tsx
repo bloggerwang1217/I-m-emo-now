@@ -12,7 +12,6 @@ export default function DrawerLayout() {
         },
         headerTintColor: Colors.text.primary,
         headerTitleStyle: {
-          fontFamily: Typography.fontFamily.primary,
           fontSize: Typography.fontSize.xl,
           fontWeight: '600',
         },
@@ -22,7 +21,6 @@ export default function DrawerLayout() {
         drawerActiveTintColor: Colors.interactive.primary,
         drawerInactiveTintColor: Colors.text.secondary,
         drawerLabelStyle: {
-          fontFamily: Typography.fontFamily.primary,
           fontSize: Typography.fontSize.base,
         },
       }}>
