@@ -14,7 +14,7 @@ export default function DrawerLayout() {
         headerTitleStyle: {
           fontFamily: Typography.fontFamily.primary,
           fontSize: Typography.fontSize.xl,
-          fontWeight: Typography.fontWeight.semibold,
+          fontWeight: '600',
         },
         drawerStyle: {
           backgroundColor: Colors.background.primary,
