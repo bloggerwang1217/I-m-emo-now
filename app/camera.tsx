@@ -7,7 +7,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions, Camera } from 'expo-camera';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +35,7 @@ export default function CameraScreen() {
     };
 
     requestPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleCameraFacing = () => {
@@ -70,7 +71,7 @@ export default function CameraScreen() {
 
       if (video && video.uri) {
         // Save to media library
-        const asset = await MediaLibrary.createAssetAsync(video.uri);
+        await MediaLibrary.createAssetAsync(video.uri);
 
         Alert.alert(
           'Video Recorded',
@@ -92,6 +93,8 @@ export default function CameraScreen() {
     }
   };
 
+  // Reserved for future use - manual stop recording
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const stopRecording = async () => {
     if (cameraRef.current && isRecording) {
       cameraRef.current.stopRecording();

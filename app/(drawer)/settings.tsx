@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Colors, Typography, Spacing, BorderRadius, ButtonStyles } from '@/constants/theme';
-import { getSettings, updateSettings, Settings } from '@/utils/database';
+import { getSettings, updateSettings } from '@/utils/database';
 import {
   scheduleDailyNotifications,
   cancelAllNotifications,
@@ -23,7 +23,6 @@ import {
 } from '@/utils/notifications';
 
 export default function SettingsScreen() {
-  const [settings, setSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -34,15 +33,10 @@ export default function SettingsScreen() {
   const [time2, setTime2] = useState(new Date());
   const [time3, setTime3] = useState(new Date());
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const data = await getSettings();
       if (data) {
-        setSettings(data);
         setNotificationsEnabled(data.notifications_enabled === 1);
 
         // Parse time strings and create Date objects
@@ -56,7 +50,11 @@ export default function SettingsScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const parseTimeString = (timeString: string): Date => {
     const [hours, minutes] = timeString.split(':').map(Number);

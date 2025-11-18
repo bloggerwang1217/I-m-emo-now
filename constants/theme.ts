@@ -31,10 +31,10 @@ export const AppColors = {
 };
 
 /**
- * Semantic Color Mapping
+ * Base semantic color mapping (primarily dark theme)
  * Maps functional purposes to specific colors
  */
-export const Colors = {
+const BaseColors = {
   // Background colors
   background: {
     primary: AppColors.inkyDark,
@@ -82,6 +82,35 @@ export const Colors = {
 };
 
 /**
+ * Theme-aware color schemes
+ * Supporting both light and dark modes
+ */
+export const Colors = {
+  // Export base colors for backwards compatibility
+  ...BaseColors,
+
+  // Light mode colors (adjusted for light backgrounds)
+  light: {
+    text: AppColors.inkyDark,
+    background: AppColors.ivory,
+    tint: AppColors.mutedGold,
+    icon: AppColors.slateGrey,
+    tabIconDefault: AppColors.slateGrey,
+    tabIconSelected: AppColors.mutedGold,
+  },
+
+  // Dark mode colors (our primary theme)
+  dark: {
+    text: AppColors.ivory,
+    background: AppColors.inkyDark,
+    tint: AppColors.mutedGold,
+    icon: AppColors.ivory,
+    tabIconDefault: AppColors.slateGrey,
+    tabIconSelected: AppColors.mutedGold,
+  },
+};
+
+/**
  * Typography System
  * Font families, sizes, and weights
  */
@@ -98,6 +127,18 @@ export const Typography = {
       ios: 'Manrope',
       android: 'Manrope',
       web: "'Manrope', system-ui, sans-serif",
+      default: 'system-ui',
+    }),
+    mono: Platform.select({
+      ios: 'Menlo',
+      android: 'monospace',
+      web: "'Courier New', Courier, monospace",
+      default: 'monospace',
+    }),
+    rounded: Platform.select({
+      ios: 'Inter',
+      android: 'Inter',
+      web: "'Inter', system-ui, sans-serif",
       default: 'system-ui',
     }),
   },
@@ -129,6 +170,12 @@ export const Typography = {
     relaxed: 1.75,
   },
 };
+
+/**
+ * Fonts export for backwards compatibility
+ * Maps to Typography.fontFamily
+ */
+export const Fonts = Typography.fontFamily;
 
 /**
  * Spacing System
