@@ -123,30 +123,22 @@ export default function HomeScreen() {
       <View style={styles.videoSection}>
         <Text style={styles.sectionTitle}>1-Second Vlog</Text>
         <Text style={styles.sectionDescription}>
-          Record a quick 1-second video to capture this moment
+          Record a quick video to capture this moment
         </Text>
 
         <TouchableOpacity style={styles.videoButton} onPress={handleRecordVideo}>
-          <Ionicons name="videocam-outline" size={32} color={Colors.text.primary} />
+          <Ionicons name="videocam-outline" size={24} color={Colors.text.primary} />
           <Text style={styles.videoButtonText}>
             {videoFilename ? 'Video Recorded ✓' : 'Record Video'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Location Info */}
-      <View style={styles.infoSection}>
-        <Ionicons name="location-outline" size={20} color={Colors.text.secondary} />
-        <Text style={styles.infoText}>
-          Location will be automatically captured when you submit
-        </Text>
-      </View>
-
       {/* Submit Button */}
       <TouchableOpacity
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
-        disabled={isSubmitting}>
+        disabled={isSubmitting || !videoFilename}>
         {isSubmitting ? (
           <ActivityIndicator color={Colors.text.inverse} />
         ) : (
@@ -154,8 +146,13 @@ export default function HomeScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Optional: Skip video note */}
-      <Text style={styles.noteText}>Note: Video recording is optional</Text>
+      {/* Location Info */}
+      <View style={styles.infoSection}>
+        <Ionicons name="location-outline" size={14} color={Colors.text.secondary} />
+        <Text style={styles.infoText}>
+          Location will be captured when you submit
+        </Text>
+      </View>
     </ScrollView>
   );
 }
@@ -228,48 +225,47 @@ const styles = StyleSheet.create({
   videoSection: {
     backgroundColor: Colors.background.card,
     borderRadius: BorderRadius.md,
-    padding: Spacing.xl,
-    marginBottom: Spacing.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.xl,
+    fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.semibold,
     color: Colors.text.primary,
     fontFamily: Typography.fontFamily.primary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   sectionDescription: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: Colors.text.secondary,
     fontFamily: Typography.fontFamily.primary,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   videoButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: Spacing.lg,
-    borderWidth: 2,
+    padding: Spacing.sm,
+    borderWidth: 1,
     borderColor: Colors.border.default,
     borderRadius: BorderRadius.sm,
     borderStyle: 'dashed',
   },
   videoButtonText: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.sm,
     color: Colors.text.primary,
     fontFamily: Typography.fontFamily.primary,
-    marginLeft: Spacing.md,
+    marginLeft: Spacing.sm,
   },
   infoSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    backgroundColor: Colors.background.card,
-    borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   infoText: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: Colors.text.secondary,
     fontFamily: Typography.fontFamily.primary,
     marginLeft: Spacing.sm,
@@ -281,7 +277,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ButtonStyles.primary.paddingHorizontal,
     borderRadius: ButtonStyles.primary.borderRadius,
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   submitButtonDisabled: {
     opacity: 0.6,
@@ -293,10 +289,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.primary,
   },
   noteText: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: Colors.text.secondary,
     fontFamily: Typography.fontFamily.primary,
     textAlign: 'center',
     fontStyle: 'italic',
+    marginBottom: Spacing.lg,
   },
 });
