@@ -35,6 +35,11 @@ export default function HomeScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!videoFilename) {
+      Alert.alert('No Video Recorded', 'Please record a video before submitting.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -106,14 +111,21 @@ export default function HomeScreen() {
           {/* Emoji markers below slider */}
           <View style={styles.emojiMarkers}>
             {EMOTION_EMOJIS.map((emoji, index) => (
-              <Text
+              <TouchableOpacity
                 key={index}
+                onPress={() => handleEmotionChange(index + 1)}
                 style={[
-                  styles.emojiMarker,
-                  emotionScore === index + 1 && styles.emojiMarkerActive,
+                  styles.emojiMarkerButton,
+                  emotionScore === index + 1 && styles.emojiMarkerButtonActive,
                 ]}>
-                {emoji}
-              </Text>
+                <Text
+                  style={[
+                    styles.emojiMarker,
+                    emotionScore === index + 1 && styles.emojiMarkerActive,
+                  ]}>
+                  {emoji}
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -213,6 +225,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.sm,
     marginTop: Spacing.sm,
+  },
+  emojiMarkerButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  emojiMarkerButtonActive: {
+    // Visual feedback for active state can be added here
   },
   emojiMarker: {
     fontSize: 24,
