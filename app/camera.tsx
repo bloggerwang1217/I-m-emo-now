@@ -1,24 +1,30 @@
-import { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
-import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  CameraType,
+  CameraView,
+  useCameraPermissions,
+  useMicrophonePermissions,
+} from 'expo-camera';
+import * as MediaLibrary from 'expo-media-library';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 
 export default function CameraScreen() {
   const router = useRouter();
   const cameraRef = useRef<CameraView>(null);
   const [facing, setFacing] = useState<CameraType>('front');
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const [isRecording, setIsRecording] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -29,6 +35,9 @@ export default function CameraScreen() {
       if (!cameraPermission?.granted) {
         await requestCameraPermission();
       }
+      if (!microphonePermission?.granted) {
+        await requestMicrophonePermission();
+      }
       if (!mediaPermission?.granted) {
         await requestMediaPermission();
       }
@@ -38,12 +47,24 @@ export default function CameraScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    const camera = cameraRef.current;
+    return () => {
+      if (camera && isRecording) {
+        camera.stopRecording();
+      }
+    };
+  }, [isRecording]);
+
   const toggleCameraFacing = () => {
     setFacing((current) => (current === 'back' ? 'front' : 'back'));
   };
 
   const startRecording = async () => {
     if (!cameraRef.current || isRecording) return;
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     try {
       setIsRecording(true);
@@ -52,11 +73,12 @@ export default function CameraScreen() {
       // Countdown 3, 2, 1
       await new Promise((resolve) => {
         let count = 3;
-        const interval = setInterval(() => {
+        intervalId = setInterval(() => {
           count--;
           setCountdown(count);
           if (count === 0) {
-            clearInterval(interval);
+            if (intervalId) clearInterval(intervalId);
+            intervalId = null;
             resolve(true);
           }
         }, 1000);
@@ -64,44 +86,83 @@ export default function CameraScreen() {
 
       setCountdown(null);
 
-      // Start recording
-      const video = await cameraRef.current.recordAsync({
-        maxDuration: 1, // 1 second video
-      });
+      // Wait a moment for the camera to be ready (Android needs time to initialize)
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Start recording - recordAsync will resolve when stopRecording is called
+      console.log('Starting recordAsync...');
+      const video = await cameraRef.current.recordAsync();
+
+      // Handle the recorded video after stopRecording is called
+      console.log('Video result:', JSON.stringify(video, null, 2));
 
       if (video && video.uri) {
-        // Save to media library
-        await MediaLibrary.createAssetAsync(video.uri);
+        console.log('Video URI found:', video.uri);
+        try {
+          // Save to media library
+          const asset = await MediaLibrary.createAssetAsync(video.uri);
+          console.log('Saved to media library:', asset);
 
-        Alert.alert(
-          'Video Recorded',
-          'Your 1-second vlog has been saved to your camera roll!',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back(),
-            },
-          ]
-        );
+          // Generate filename using timestamp
+          const filename = `vlog_${new Date().getTime()}.mp4`;
+
+          // Navigate back with success parameter
+          router.navigate({
+            pathname: '/(drawer)',
+            params: { videoRecorded: filename },
+          });
+        } catch (libraryError) {
+          console.error('Error saving to media library:', libraryError);
+          // Still navigate back even if media library save fails
+          const filename = `vlog_${new Date().getTime()}.mp4`;
+          router.navigate({
+            pathname: '/(drawer)',
+            params: { videoRecorded: filename },
+          });
+        }
+      } else {
+        // Video is null/undefined - treat as successful cancellation
+        console.warn('Video recording returned no URI:', video);
+        Alert.alert('Recording Cancelled', 'Video recording was cancelled or too short.');
+        router.back();
       }
     } catch (error) {
       console.error('Error recording video:', error);
-      Alert.alert('Error', 'Failed to record video. Please try again.');
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorName = error instanceof Error ? error.name : 'Unknown';
+
+      Alert.alert(
+        'Recording Error',
+        `Failed to record video.\n\nError: ${errorName}\nMessage: ${errorMessage}\n\nPlease try again.`
+      );
     } finally {
+      // Cleanup interval if still running
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
       setIsRecording(false);
       setCountdown(null);
     }
   };
 
-  // Reserved for future use - manual stop recording
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const stopRecording = async () => {
+  const stopRecording = () => {
     if (cameraRef.current && isRecording) {
+      // This will cause recordAsync to resolve with the video object
       cameraRef.current.stopRecording();
     }
   };
 
-  if (!cameraPermission || !mediaPermission) {
+  const handleCancel = useCallback(() => {
+    if (isRecording && cameraRef.current) {
+      // Stop recording before leaving
+      cameraRef.current.stopRecording();
+    }
+    router.back();
+  }, [isRecording, router]);
+
+  if (!cameraPermission || !microphonePermission || !mediaPermission) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={Colors.interactive.primary} />
@@ -115,6 +176,18 @@ export default function CameraScreen() {
         <Ionicons name="camera-outline" size={64} color={Colors.text.secondary} />
         <Text style={styles.permissionText}>Camera permission is required</Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
+          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!microphonePermission.granted) {
+    return (
+      <View style={styles.permissionContainer}>
+        <Ionicons name="mic-outline" size={64} color={Colors.text.secondary} />
+        <Text style={styles.permissionText}>Microphone permission is required</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={requestMicrophonePermission}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
@@ -135,51 +208,66 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
-        {/* Countdown overlay */}
-        {countdown !== null && (
-          <View style={styles.countdownOverlay}>
-            <Text style={styles.countdownText}>{countdown}</Text>
-          </View>
-        )}
+      <CameraView
+        ref={cameraRef}
+        style={styles.camera}
+        facing={facing}
+        mode="video"
+        videoQuality="720p"
+      />
 
-        {/* Recording indicator */}
-        {isRecording && countdown === null && (
-          <View style={styles.recordingIndicator}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>RECORDING</Text>
-          </View>
-        )}
-
-        {/* Controls overlay */}
-        <View style={styles.controlsContainer}>
-          <View style={styles.topControls}>
-            <TouchableOpacity
-              style={styles.flipButton}
-              onPress={toggleCameraFacing}
-              disabled={isRecording}>
-              <Ionicons name="camera-reverse-outline" size={32} color={Colors.text.primary} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.bottomControls}>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>Record a 1-second vlog</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.recordButton, isRecording && styles.recordButtonActive]}
-              onPress={startRecording}
-              disabled={isRecording}>
-              <View style={styles.recordButtonInner} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Countdown overlay */}
+      {countdown !== null && (
+        <View style={styles.countdownOverlay}>
+          <Text style={styles.countdownText}>{countdown}</Text>
         </View>
-      </CameraView>
+      )}
+
+      {/* Recording indicator */}
+      {isRecording && countdown === null && (
+        <View style={styles.recordingIndicator}>
+          <View style={styles.recordingDot} />
+          <Text style={styles.recordingText}>RECORDING</Text>
+        </View>
+      )}
+
+      {/* Controls overlay */}
+      <View style={styles.controlsContainer}>
+        <View style={styles.topControls}>
+          <TouchableOpacity
+            style={styles.flipButton}
+            onPress={toggleCameraFacing}
+            disabled={isRecording}>
+            <Ionicons name="camera-reverse-outline" size={32} color={Colors.text.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bottomControls}>
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              {countdown !== null
+                ? 'Please get ready!'
+                : isRecording
+                  ? 'Tap red button to stop'
+                  : 'Tap to start recording'}
+            </Text>
+          </View>
+
+          {countdown === null && (
+            <>
+              <TouchableOpacity
+                style={[styles.recordButton, isRecording && styles.recordButtonActive]}
+                onPress={isRecording ? stopRecording : startRecording}>
+                <View style={styles.recordButtonInner} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
     </View>
   );
 }
@@ -255,14 +343,22 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.primary,
   },
   controlsContainer: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'space-between',
+    flexDirection: 'column',
+    pointerEvents: 'box-none',
+    zIndex: 10,
   },
   topControls: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     padding: Spacing.lg,
     marginTop: 40,
+    pointerEvents: 'auto',
   },
   flipButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -273,6 +369,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: Spacing['2xl'],
     gap: Spacing.lg,
+    pointerEvents: 'auto',
   },
   infoBox: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
