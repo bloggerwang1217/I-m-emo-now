@@ -123,9 +123,6 @@ To create a standalone build for production:
 # Install Expo-Dev-Client
 npx expo install expo-dev-client
 
-# Start
-npx expo start
-
 # Install EAS CLI
 npm install -g eas-cli
 
@@ -187,15 +184,6 @@ eas build --platform android --profile preview
 2. **Customize Times:** Tap on each time slot to change notification times
 3. **Save Settings:** Tap "Save Times" after making changes
 4. **Test Notifications:** Send a test notification to verify setup
-
-## Data Privacy
-
-- ✅ All data stored locally on your device
-- ✅ No cloud storage or external servers
-- ✅ Location only captured during check-ins (no background tracking)
-- ✅ You control data export and sharing
-- ✅ Videos saved to your device camera roll
-- ✅ Can delete individual entries anytime
 
 ## Project Structure
 
@@ -259,18 +247,6 @@ CREATE TABLE settings (
 | Muted Green | `#98971A` | Success states, positive emotions |
 | Soft Rust | `#CC241D` | Alerts, negative emotions |
 
-## H-AI Interaction History
-
-This project was developed with assistance from Claude AI (Anthropic). The interaction history has been documented and is available in the repository under `H-AI-INTERACTION.md`.
-
-Key areas where AI assistance was utilized:
-- Architecture planning and project structure
-- SQLite database design and implementation
-- Navigation setup with Expo Router
-- Design system implementation
-- Code review and optimization
-- Debugging and error handling
-
 ## Sample Data
 
 Sample data exports are available in the `/data` folder:
@@ -279,44 +255,6 @@ Sample data exports are available in the `/data` folder:
 - Time span: > 12 hours between first and last entry
 
 Videos are stored in the device camera roll and referenced by timestamp in the CSV export.
-
-## Development Timeline
-
-- **Phase 1-2:** Project setup and emotion UI (3 hours)
-- **Phase 3-4:** Camera and GPS implementation (4 hours)
-- **Phase 5:** Notifications system (2 hours)
-- **Phase 6:** History screen (2 hours)
-- **Phase 7:** Data export (2 hours)
-- **Phase 8:** UI/UX polish (2 hours)
-- **Phase 9:** Testing and data collection (12+ hours)
-- **Phase 10:** Documentation (1 hour)
-
-**Total:** ~28 hours including real-world testing
-
-## Known Issues
-
-- Camera recording may require device restart after first permission grant on some Android devices
-- iOS simulator does not support camera, must test on physical device
-- Notification delivery reliability varies by device/OS settings
-
-## Future Enhancements
-
-### More Input Variables (More Xs)
-- Additional emotion dimensions (arousal, dominance)
-- Contextual questions (activity, social context)
-- Voice memo option
-- Photo capture of environment
-- Weather data integration
-- Step count/movement data
-
-### Better Analysis (Better Ys)
-- Data visualization dashboard
-- Emotion trends over time
-- Location-based emotion patterns
-- Time-of-day analysis
-- Weekly/monthly reports
-- Cloud backup and sync
-- Multi-user support for research studies
 
 ## Credits
 
