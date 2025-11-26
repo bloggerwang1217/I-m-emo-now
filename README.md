@@ -8,7 +8,7 @@ An experience-sampling mobile app that collects multimodal emotional data throug
 
 ## App URI
 
-🚀 ![Android Preview Build](https://expo.dev/accounts/bloggerwang1217/projects/Im-emo-now/builds/9788ccbe-e2c4-4d44-bc99-60e600fcf28d)
+🚀 [Android Preview Build](https://expo.dev/accounts/bloggerwang1217/projects/Im-emo-now/builds/9788ccbe-e2c4-4d44-bc99-60e600fcf28d)
 
 📱 **QR Code:** Scan it to download the apk.
 
