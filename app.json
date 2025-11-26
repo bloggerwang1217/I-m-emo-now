@@ -106,7 +106,9 @@
       "eas": {
         "projectId": "c7b9455d-3100-473e-97fc-0e68d1208431"
       },
-      "router": {}
+      "router": {
+        "appRoot": "app"
+      }
     },
     "owner": "bloggerwang1217"
   }
