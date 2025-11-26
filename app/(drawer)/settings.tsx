@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Colors, Typography, Spacing, BorderRadius, ButtonStyles } from '@/constants/theme';
 import { getSettings, updateSettings } from '@/utils/database';
+import StarsBackground from '@/components/stars-background';
 import {
   scheduleDailyNotifications,
   cancelAllNotifications,
@@ -178,8 +179,10 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <StarsBackground />
+      <ScrollView contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
         <Text style={styles.subtitle}>Customize your notification preferences</Text>
       </View>
@@ -320,7 +323,8 @@ export default function SettingsScreen() {
           check-ins. Make sure to allow notifications in your device settings.
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

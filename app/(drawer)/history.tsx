@@ -16,6 +16,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { Colors, Typography, Spacing, BorderRadius, ButtonStyles } from '@/constants/theme';
 import { getAllSessions, deleteSession, exportSessionsToCSV, Session } from '@/utils/database';
+import StarsBackground from '@/components/stars-background';
 
 const EMOTION_EMOJIS = ['😢', '😟', '😐', '😊', '😄'];
 
@@ -200,6 +201,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
+      <StarsBackground />
       <View style={styles.header}>
         <Text style={styles.title}>Your Emotional Journey</Text>
         <Text style={styles.subtitle}>{sessions.length} entries recorded</Text>
