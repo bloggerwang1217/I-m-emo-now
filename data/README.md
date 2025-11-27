@@ -13,7 +13,7 @@ timestamp,gps_x,gps_y,emo_score
 ```
 
 **Columns:**
-- `timestamp`: ISO 8601 formatted datetime (UTC)
+- `timestamp`: ISO 8601 formatted datetime (UTC - Zero timezone). *Note: Will be updated to local time in future releases.*
 - `gps_x`: Latitude (decimal degrees)
 - `gps_y`: Longitude (decimal degrees)
 - `emo_score`: Emotion rating (1-5 scale)
