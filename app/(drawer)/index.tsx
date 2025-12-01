@@ -16,6 +16,7 @@ import StarsBackground from '@/components/stars-background';
 import { BorderRadius, ButtonStyles, Colors, Spacing, Typography } from '@/constants/theme';
 import { insertSession } from '@/utils/database';
 import { getCurrentLocation, requestLocationPermissions } from '@/utils/location';
+import { getLocalISOString } from '@/utils/datetime';
 
 // Emotion emojis for the 1-5 scale
 const EMOTION_EMOJIS = ['😢', '😟', '😐', '😊', '😄'];
@@ -90,7 +91,7 @@ export default function HomeScreen() {
 
       // Create session data
       const sessionData = {
-        timestamp: new Date().toISOString(),
+        timestamp: getLocalISOString(),
         emotion_score: emotionScore,
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,

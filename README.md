@@ -68,7 +68,7 @@ The app features an **"Atmospheric Sci-Fi"** design system inspired by the Flexo
 - Share via native device sharing (email, cloud storage, etc.)
 - CSV format: `timestamp,gps_x,gps_y,emo_score`
 - Videos stored separately in device camera roll
-- **Note:** Timestamps currently recorded in UTC (Zero timezone). Will be updated to local time in future releases.
+- **Note:** Timestamps are recorded in local time with timezone offset (e.g., `2024-12-01T15:30:45+08:00`)
 
 ### Technical Stack
 
