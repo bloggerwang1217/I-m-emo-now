@@ -15,21 +15,41 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { Colors, Typography, Spacing, BorderRadius, ButtonStyles } from '@/constants/theme';
-import { getAllSessions, deleteSession, exportSessionsToCSV, Session } from '@/utils/database';
+import {
+  getAllSessions,
+  deleteSession,
+  exportSessionsToCSV,
+  Session,
+  getPendingUploads,
+  UploadQueueRecord,
+} from '@/utils/database';
 import StarsBackground from '@/components/stars-background';
 
 const EMOTION_EMOJIS = ['😢', '😟', '😐', '😊', '😄'];
 
 export default function HistoryScreen() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<Map<number, UploadQueueRecord>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   const loadSessions = async () => {
     try {
-      const data = await getAllSessions();
-      setSessions(data);
+      const [sessionsData, pendingUploads] = await Promise.all([
+        getAllSessions(),
+        getPendingUploads(),
+      ]);
+
+      setSessions(sessionsData);
+
+      // Create a map for quick lookup of upload status by timestamp
+      const queueMap = new Map<number, UploadQueueRecord>();
+      pendingUploads.forEach((record) => {
+        const date = new Date(record.timestamp);
+        queueMap.set(date.getTime(), record);
+      });
+      setUploadQueue(queueMap);
     } catch (error) {
       console.error('Error loading sessions:', error);
       Alert.alert('Error', 'Failed to load history. Please try again.');
@@ -143,8 +163,31 @@ export default function HistoryScreen() {
     }
   };
 
+  const getUploadStatusBadge = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const queueRecord = uploadQueue.get(date.getTime());
+
+    if (!queueRecord) {
+      return { label: 'Local', color: Colors.text.secondary, icon: 'checkmark-outline' };
+    }
+
+    switch (queueRecord.status) {
+      case 'pending':
+        return { label: 'Pending', color: Colors.interactive.primary, icon: 'time-outline' };
+      case 'uploading':
+        return { label: 'Uploading', color: Colors.interactive.primary, icon: 'cloud-upload-outline' };
+      case 'completed':
+        return { label: 'Uploaded', color: Colors.status.success, icon: 'cloud-done-outline' };
+      case 'failed':
+        return { label: 'Failed', color: Colors.status.error, icon: 'alert-circle-outline' };
+      default:
+        return { label: 'Unknown', color: Colors.text.secondary, icon: 'help-outline' };
+    }
+  };
+
   const renderSessionItem = ({ item }: { item: Session }) => {
     const emoji = EMOTION_EMOJIS[item.emotion_score - 1] || '😐';
+    const uploadStatus = getUploadStatusBadge(item.timestamp);
 
     return (
       <View style={styles.sessionCard}>
@@ -156,6 +199,13 @@ export default function HistoryScreen() {
           <View style={styles.sessionInfo}>
             <Text style={styles.sessionDate}>{formatDate(item.timestamp)}</Text>
             <Text style={styles.sessionTime}>{formatTime(item.timestamp)}</Text>
+          </View>
+
+          <View style={styles.uploadBadge}>
+            <Ionicons name={uploadStatus.icon as any} size={14} color={uploadStatus.color} />
+            <Text style={[styles.uploadBadgeText, { color: uploadStatus.color }]}>
+              {uploadStatus.label}
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -347,6 +397,20 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     fontFamily: Typography.fontFamily.primary,
     marginTop: 2,
+  },
+  uploadBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.background.primary,
+    marginRight: Spacing.sm,
+  },
+  uploadBadgeText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.primary,
   },
   deleteButton: {
     padding: Spacing.sm,

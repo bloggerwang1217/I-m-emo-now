@@ -14,7 +14,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Colors, Typography, Spacing, BorderRadius, ButtonStyles } from '@/constants/theme';
-import { getSettings, updateSettings } from '@/utils/database';
+import { getSettings, updateSettings, getUploadQueueStats } from '@/utils/database';
 import StarsBackground from '@/components/stars-background';
 import {
   scheduleDailyNotifications,
@@ -27,6 +27,13 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [uploadStats, setUploadStats] = useState({
+    pending: 0,
+    uploading: 0,
+    completed: 0,
+    failed: 0,
+    total: 0,
+  });
 
   // Time picker states
   const [showTimePicker, setShowTimePicker] = useState<number | null>(null);
@@ -36,15 +43,21 @@ export default function SettingsScreen() {
 
   const loadSettings = useCallback(async () => {
     try {
-      const data = await getSettings();
-      if (data) {
-        setNotificationsEnabled(data.notifications_enabled === 1);
+      const [settingsData, statsData] = await Promise.all([
+        getSettings(),
+        getUploadQueueStats(),
+      ]);
+
+      if (settingsData) {
+        setNotificationsEnabled(settingsData.notifications_enabled === 1);
 
         // Parse time strings and create Date objects
-        setTime1(parseTimeString(data.notification_time_1));
-        setTime2(parseTimeString(data.notification_time_2));
-        setTime3(parseTimeString(data.notification_time_3));
+        setTime1(parseTimeString(settingsData.notification_time_1));
+        setTime2(parseTimeString(settingsData.notification_time_2));
+        setTime3(parseTimeString(settingsData.notification_time_3));
       }
+
+      setUploadStats(statsData);
     } catch (error) {
       console.error('Error loading settings:', error);
       Alert.alert('Error', 'Failed to load settings. Please try again.');
@@ -169,6 +182,7 @@ export default function SettingsScreen() {
       console.error('Error getting scheduled notifications:', error);
     }
   };
+
 
   if (isLoading) {
     return (
@@ -313,6 +327,45 @@ export default function SettingsScreen() {
           <Ionicons name="list-outline" size={20} color={Colors.text.primary} />
           <Text style={styles.testButtonText}>View Scheduled Notifications</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Upload Queue Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="cloud-upload-outline" size={24} color={Colors.text.primary} />
+          <Text style={styles.sectionTitle}>Upload Queue</Text>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Total</Text>
+            <Text style={[styles.statValue, { color: Colors.text.primary }]}>
+              {uploadStats.total}
+            </Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Pending</Text>
+            <Text style={[styles.statValue, { color: Colors.interactive.primary }]}>
+              {uploadStats.pending}
+            </Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Uploaded</Text>
+            <Text style={[styles.statValue, { color: Colors.status.success }]}>
+              {uploadStats.completed}
+            </Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Failed</Text>
+            <Text style={[styles.statValue, { color: Colors.status.error }]}>
+              {uploadStats.failed}
+            </Text>
+          </View>
+        </View>
+
       </View>
 
       {/* Info Section */}
@@ -467,5 +520,27 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     fontFamily: Typography.fontFamily.primary,
     lineHeight: Typography.fontSize.sm * Typography.lineHeight.normal,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.divider,
+    marginBottom: Spacing.md,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.text.secondary,
+    fontFamily: Typography.fontFamily.primary,
+    marginBottom: Spacing.xs,
+  },
+  statValue: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.semibold,
+    fontFamily: Typography.fontFamily.primary,
   },
 });

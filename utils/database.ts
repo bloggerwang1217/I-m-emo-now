@@ -24,6 +24,22 @@ export interface Settings {
   notifications_enabled: number;
 }
 
+export interface UploadQueueRecord {
+  id: string;
+  session_id: string;
+  timestamp: string;
+  emotion_score: number;
+  latitude: number | null;
+  longitude: number | null;
+  video_uri: string | null;
+  status: 'pending' | 'uploading' | 'completed' | 'failed';
+  retry_count: number;
+  error_message: string | null;
+  created_at: number;
+  next_retry_at: number;
+  uploaded_at: number | null;
+}
+
 let db: SQLite.SQLiteDatabase | null = null;
 
 /**
@@ -53,6 +69,25 @@ export const initDatabase = async (): Promise<void> => {
         notification_time_2 TEXT DEFAULT '14:00',
         notification_time_3 TEXT DEFAULT '20:00',
         notifications_enabled INTEGER DEFAULT 1
+      );
+    `);
+
+    // Create upload_queue table for managing offline uploads
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS upload_queue (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        emotion_score INTEGER NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        video_uri TEXT,
+        status TEXT DEFAULT 'pending',
+        retry_count INTEGER DEFAULT 0,
+        error_message TEXT,
+        created_at INTEGER NOT NULL,
+        next_retry_at INTEGER DEFAULT 0,
+        uploaded_at INTEGER
       );
     `);
 
@@ -254,3 +289,179 @@ export const clearAllSessions = async (): Promise<void> => {
     throw error;
   }
 };
+
+/**
+ * Add item to upload queue
+ */
+export const addToUploadQueue = async (
+  record: Omit<UploadQueueRecord, 'uploaded_at'>
+): Promise<void> => {
+  try {
+    const database = getDatabase();
+    await database.runAsync(
+      `INSERT INTO upload_queue
+       (id, session_id, timestamp, emotion_score, latitude, longitude, video_uri, status, retry_count, error_message, created_at, next_retry_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        record.id,
+        record.session_id,
+        record.timestamp,
+        record.emotion_score,
+        record.latitude,
+        record.longitude,
+        record.video_uri,
+        record.status,
+        record.retry_count,
+        record.error_message,
+        record.created_at,
+        record.next_retry_at,
+      ]
+    );
+  } catch (error) {
+    console.error('Error adding to upload queue:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all pending upload queue items with optional pagination
+ * @param limit Maximum number of items to retrieve (default: all)
+ * @param offset Number of items to skip (default: 0)
+ */
+export const getPendingUploads = async (limit?: number, offset: number = 0): Promise<UploadQueueRecord[]> => {
+  try {
+    const database = getDatabase();
+    let query = `SELECT * FROM upload_queue WHERE status IN ('pending', 'failed') ORDER BY created_at ASC`;
+    const params: any[] = [];
+
+    if (limit) {
+      query += ` LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+    }
+
+    const records = await database.getAllAsync<UploadQueueRecord>(query, params);
+    return records;
+  } catch (error) {
+    console.error('Error getting pending uploads:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get upload queue item by ID
+ */
+export const getUploadQueueItem = async (id: string): Promise<UploadQueueRecord | null> => {
+  try {
+    const database = getDatabase();
+    const record = await database.getFirstAsync<UploadQueueRecord>(
+      'SELECT * FROM upload_queue WHERE id = ?',
+      [id]
+    );
+    return record || null;
+  } catch (error) {
+    console.error('Error getting upload queue item:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update upload queue item status
+ */
+export const updateUploadQueueStatus = async (
+  id: string,
+  status: UploadQueueRecord['status'],
+  retryCount?: number,
+  errorMessage?: string | null
+): Promise<void> => {
+  try {
+    const database = getDatabase();
+    const updates: string[] = ['status = ?'];
+    const values: any[] = [status];
+
+    if (retryCount !== undefined) {
+      updates.push('retry_count = ?');
+      values.push(retryCount);
+    }
+
+    if (errorMessage !== undefined) {
+      updates.push('error_message = ?');
+      values.push(errorMessage);
+    }
+
+    if (status === 'completed') {
+      updates.push('uploaded_at = ?');
+      values.push(Date.now());
+    }
+
+    values.push(id);
+
+    await database.runAsync(
+      `UPDATE upload_queue SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+  } catch (error) {
+    console.error('Error updating upload queue status:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove item from upload queue
+ */
+export const removeFromUploadQueue = async (id: string): Promise<void> => {
+  try {
+    const database = getDatabase();
+    await database.runAsync('DELETE FROM upload_queue WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error removing from upload queue:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get upload queue statistics
+ */
+export const getUploadQueueStats = async (): Promise<{
+  pending: number;
+  uploading: number;
+  completed: number;
+  failed: number;
+  total: number;
+}> => {
+  try {
+    const database = getDatabase();
+    const stats = await database.getFirstAsync<{
+      pending: number;
+      uploading: number;
+      completed: number;
+      failed: number;
+      total: number;
+    }>(
+      `SELECT
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+        COUNT(CASE WHEN status = 'uploading' THEN 1 END) as uploading,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+        COUNT(*) as total
+       FROM upload_queue`
+    );
+    return stats || { pending: 0, uploading: 0, completed: 0, failed: 0, total: 0 };
+  } catch (error) {
+    console.error('Error getting upload queue stats:', error);
+    throw error;
+  }
+};
+
+/**
+ * Clear completed uploads from queue
+ */
+export const clearCompletedUploads = async (): Promise<void> => {
+  try {
+    const database = getDatabase();
+    await database.runAsync("DELETE FROM upload_queue WHERE status = 'completed'");
+  } catch (error) {
+    console.error('Error clearing completed uploads:', error);
+    throw error;
+  }
+};
+

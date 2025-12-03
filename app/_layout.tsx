@@ -2,13 +2,15 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
 
 import { Colors } from '@/constants/theme';
 import { initDatabase } from '@/utils/database';
 import { requestNotificationPermissions } from '@/utils/notifications';
+import { getOrCreateDeviceId } from '@/utils/device';
+import { uploadQueue } from '@/utils/uploadQueue';
 
 // Keep splash screen visible while we prepare the app
 SplashScreen.preventAutoHideAsync();
@@ -24,11 +26,19 @@ export default function RootLayout() {
         // Initialize database
         await initDatabase();
 
+        // Initialize device ID
+        await getOrCreateDeviceId();
+
+        // Initialize upload queue
+        await uploadQueue.initialize();
+
         // Request notification permissions
         await requestNotificationPermissions();
 
         // Hide splash screen
         await SplashScreen.hideAsync();
+
+        console.log('App initialization complete');
       } catch (error) {
         console.error('Error preparing app:', error);
         await SplashScreen.hideAsync();
@@ -36,7 +46,21 @@ export default function RootLayout() {
     };
 
     prepareApp();
+
+    // Setup app state listener for cleanup
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+      uploadQueue.cleanup();
+    };
   }, []);
+
+  const handleAppStateChange = (state: any) => {
+    if (state === 'background' || state === 'inactive') {
+      console.log('App moved to background, upload queue cleanup scheduled');
+    }
+  };
 
   return (
     <GestureHandlerRootView style={styles.container}>

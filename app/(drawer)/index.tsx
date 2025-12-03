@@ -11,12 +11,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { v4 as uuidv4 } from 'uuid';
 
 import StarsBackground from '@/components/stars-background';
 import { BorderRadius, ButtonStyles, Colors, Spacing, Typography } from '@/constants/theme';
 import { insertSession } from '@/utils/database';
 import { getCurrentLocation, requestLocationPermissions } from '@/utils/location';
 import { getLocalISOString } from '@/utils/datetime';
+import { getOrCreateDeviceId } from '@/utils/device';
+import { uploadQueue } from '@/utils/uploadQueue';
 
 // Emotion emojis for the 1-5 scale
 const EMOTION_EMOJIS = ['😢', '😟', '😐', '😊', '😄'];
@@ -86,26 +89,50 @@ export default function HomeScreen() {
     try {
       setIsSubmitting(true);
 
+      // Get device ID (creates one if not exists)
+      await getOrCreateDeviceId();
+
       // Get current location (permission already requested on mount)
       const location = await getCurrentLocation();
 
-      // Create session data
+      // Generate session timestamp and ID
+      const timestamp = getLocalISOString();
+      const sessionId = uuidv4();
+      const queueId = uuidv4();
+
+      // Create session data for local database
       const sessionData = {
-        timestamp: getLocalISOString(),
+        timestamp,
         emotion_score: emotionScore,
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,
-        video_filename: videoFilename,
+        video_filename: videoFilename, // Store video URI from media library
       };
 
-      // Insert into database
+      // Create upload queue item
+      const uploadQueueItem = {
+        id: queueId,
+        session_id: sessionId,
+        timestamp,
+        emotion_score: emotionScore,
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
+        video_uri: videoFilename, // Use video URI from media library
+      };
+
+      // Insert into local database
       await insertSession(sessionData);
+
+      // Add to upload queue (handles all persistence and processing)
+      await uploadQueue.addToQueue(uploadQueueItem);
 
       // Show success message with better feedback
       const locationStatus = location ? 'with location' : 'without location';
+      const uploadStatusNote =
+        'Will be uploaded to cloud when network is available.\n';
       Alert.alert(
         'Check-In Complete! ✓',
-        `Your emotional check-in has been saved ${locationStatus}.\n\nEmotion: ${
+        `Your emotional check-in has been saved ${locationStatus}.\n${uploadStatusNote}\nEmotion: ${
           EMOTION_LABELS[emotionScore - 1]
         }\nVideo: Saved to camera roll`,
         [
