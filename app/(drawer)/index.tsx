@@ -27,9 +27,10 @@ const EMOTION_LABELS = ['Very Sad', 'Sad', 'Neutral', 'Happy', 'Very Happy'];
 
 export default function HomeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ videoRecorded?: string; emotionScore?: string }>();
+  const params = useLocalSearchParams<{ videoRecorded?: string; emotionScore?: string; sessionId?: string }>();
   const [emotionScore, setEmotionScore] = useState<number>(3); // Default to neutral
-  const [videoFilename, setVideoFilename] = useState<string | null>(null);
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Request location permissions on mount
@@ -43,15 +44,18 @@ export default function HomeScreen() {
   // Handle video recorded parameter from camera screen
   useEffect(() => {
     if (params.videoRecorded) {
-      setVideoFilename(params.videoRecorded);
+      setVideoUri(params.videoRecorded);
+      if (params.sessionId) {
+        setSessionId(params.sessionId);
+      }
       // Restore emotionScore if provided
       if (params.emotionScore) {
         setEmotionScore(parseInt(params.emotionScore, 10));
       }
       // Clear the parameters to avoid re-triggering
-      router.setParams({ videoRecorded: undefined, emotionScore: undefined });
+      router.setParams({ videoRecorded: undefined, emotionScore: undefined, sessionId: undefined });
     }
-  }, [params.videoRecorded, params.emotionScore, router]);
+  }, [params.videoRecorded, params.emotionScore, params.sessionId, router]);
 
   const handleEmotionChange = (value: number) => {
     setEmotionScore(Math.round(value));
@@ -83,7 +87,7 @@ export default function HomeScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!videoFilename) {
+    if (!videoUri || !sessionId) {
       Alert.alert('No Video Recorded', 'Please record a video before submitting.');
       return;
     }
@@ -97,8 +101,6 @@ export default function HomeScreen() {
       // Get current location (permission already requested on mount)
       const location = await getCurrentLocation();
 
-      // Extract session ID from videoFilename (format: ${sessionId}.mp4)
-      const sessionId = videoFilename.replace('.mp4', '');
       const timestamp = getLocalISOString();
       const queueId = uuidv4();
 
@@ -108,7 +110,7 @@ export default function HomeScreen() {
         emotion_score: emotionScore,
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,
-        video_filename: videoFilename, // Store video URI from media library
+        video_filename: videoUri, // Store video URI from media library
       };
 
       // Create upload queue item
@@ -119,7 +121,7 @@ export default function HomeScreen() {
         emotion_score: emotionScore,
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,
-        video_uri: videoFilename, // Use video URI from media library
+        video_uri: videoUri, // Use full video URI from media library
       };
 
       // Insert into local database
@@ -143,7 +145,8 @@ export default function HomeScreen() {
             onPress: () => {
               // Reset form and navigate to history
               setEmotionScore(3);
-              setVideoFilename(null);
+              setVideoUri(null);
+              setSessionId(null);
               router.push('/(drawer)/history');
             },
           },
@@ -153,7 +156,8 @@ export default function HomeScreen() {
             onPress: () => {
               // Reset form
               setEmotionScore(3);
-              setVideoFilename(null);
+              setVideoUri(null);
+              setSessionId(null);
             },
           },
         ],
@@ -162,7 +166,8 @@ export default function HomeScreen() {
           onDismiss: () => {
             // Reset form when dismissed (Android back button or tap outside)
             setEmotionScore(3);
-            setVideoFilename(null);
+            setVideoUri(null);
+            setSessionId(null);
           },
         }
       );
@@ -246,7 +251,7 @@ export default function HomeScreen() {
         <TouchableOpacity style={styles.videoButton} onPress={handleRecordVideo}>
           <Ionicons name="videocam-outline" size={24} color={Colors.text.primary} />
           <Text style={styles.videoButtonText}>
-            {videoFilename ? 'Video Recorded ✓' : 'Record Video'}
+            {videoUri ? 'Video Recorded ✓' : 'Record Video'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -255,7 +260,7 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={[
           styles.submitButton,
-          (isSubmitting || !videoFilename) && styles.submitButtonDisabled,
+          (isSubmitting || !videoUri) && styles.submitButtonDisabled,
         ]}
         onPress={handleSubmit}
         disabled={isSubmitting}>

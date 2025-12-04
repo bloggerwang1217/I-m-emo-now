@@ -21,35 +21,39 @@ import {
   exportSessionsToCSV,
   Session,
   getPendingUploads,
+  getAllUploadRecords,
   UploadQueueRecord,
+  updateUploadQueueStatus,
+  clearFailedUploads,
 } from '@/utils/database';
+import { uploadQueue } from '@/utils/uploadQueue';
 import StarsBackground from '@/components/stars-background';
 
 const EMOTION_EMOJIS = ['😢', '😟', '😐', '😊', '😄'];
 
 export default function HistoryScreen() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [uploadQueue, setUploadQueue] = useState<Map<number, UploadQueueRecord>>(new Map());
+  const [pendingUploads, setPendingUploads] = useState<UploadQueueRecord[]>([]);
+  const [failedCount, setFailedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const loadSessions = async () => {
     try {
-      const [sessionsData, pendingUploads] = await Promise.all([
+      const [sessionsData, allUploads, pending] = await Promise.all([
         getAllSessions(),
+        getAllUploadRecords(),
         getPendingUploads(),
       ]);
 
       setSessions(sessionsData);
+      setPendingUploads(allUploads);
 
-      // Create a map for quick lookup of upload status by timestamp
-      const queueMap = new Map<number, UploadQueueRecord>();
-      pendingUploads.forEach((record) => {
-        const date = new Date(record.timestamp);
-        queueMap.set(date.getTime(), record);
-      });
-      setUploadQueue(queueMap);
+      // Count failed uploads from pending
+      const failed = pending.filter((r) => r.status === 'failed').length;
+      setFailedCount(failed);
     } catch (error) {
       console.error('Error loading sessions:', error);
       Alert.alert('Error', 'Failed to load history. Please try again.');
@@ -57,6 +61,65 @@ export default function HistoryScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
+  };
+
+  // Get upload status for a session by timestamp
+  const getUploadRecord = (timestamp: string): UploadQueueRecord | undefined => {
+    const date = new Date(timestamp);
+    return pendingUploads.find((r) => {
+      const recordDate = new Date(r.timestamp);
+      return Math.abs(recordDate.getTime() - date.getTime()) < 1000; // Within 1 second
+    });
+  };
+
+  const handleRetryAll = async () => {
+    setIsRetrying(true);
+    try {
+      // Reset failed items to pending with retry_count = 0
+      const failedItems = pendingUploads.filter((r) => r.status === 'failed');
+      
+      for (const item of failedItems) {
+        await updateUploadQueueStatus(item.id, 'pending', 0, null);
+      }
+
+      // Re-initialize upload queue to pick up the reset items
+      await uploadQueue.initialize();
+      
+      // Reload to show updated status
+      await loadSessions();
+      
+      if (failedItems.length > 0) {
+        Alert.alert('Retry Started', `Retrying ${failedItems.length} failed upload(s).`);
+      }
+    } catch (error) {
+      console.error('Error retrying uploads:', error);
+      Alert.alert('Error', 'Failed to retry uploads. Please try again.');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleClearFailed = async () => {
+    Alert.alert(
+      'Clear Failed Uploads',
+      'This will remove all failed uploads from the queue. You will need to re-submit these check-ins if you want to upload them.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearFailedUploads();
+              await loadSessions();
+              Alert.alert('Cleared', 'Failed uploads have been removed.');
+            } catch (error) {
+              console.error('Error clearing failed uploads:', error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Load sessions when screen comes into focus
@@ -164,8 +227,7 @@ export default function HistoryScreen() {
   };
 
   const getUploadStatusBadge = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const queueRecord = uploadQueue.get(date.getTime());
+    const queueRecord = getUploadRecord(timestamp);
 
     if (!queueRecord) {
       return { label: 'Local', color: Colors.text.secondary, icon: 'checkmark-outline' };
@@ -267,6 +329,38 @@ export default function HistoryScreen() {
         <Text style={styles.subtitle}>{sessions.length} entries recorded</Text>
       </View>
 
+      {/* Failed uploads banner */}
+      {failedCount > 0 && (
+        <View style={styles.failedBanner}>
+          <View style={styles.failedBannerContent}>
+            <Ionicons name="cloud-offline-outline" size={20} color={Colors.status.error} />
+            <Text style={styles.failedBannerText}>
+              {failedCount} upload{failedCount > 1 ? 's' : ''} failed
+            </Text>
+          </View>
+          <View style={styles.failedBannerButtons}>
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={handleClearFailed}>
+              <Ionicons name="trash-outline" size={16} color={Colors.status.error} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.retryButton, isRetrying && styles.retryButtonDisabled]}
+              onPress={handleRetryAll}
+              disabled={isRetrying}>
+              {isRetrying ? (
+                <ActivityIndicator color={Colors.text.inverse} size="small" />
+              ) : (
+                <>
+                  <Ionicons name="refresh-outline" size={16} color={Colors.text.inverse} />
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {sessions.length > 0 && (
         <TouchableOpacity
           style={[styles.exportButton, isExporting && styles.exportButtonDisabled]}
@@ -332,6 +426,56 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: Colors.text.secondary,
     fontFamily: Typography.fontFamily.primary,
+  },
+  failedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(251, 73, 52, 0.15)',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.status.error,
+  },
+  failedBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  failedBannerText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.status.error,
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  failedBannerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  clearButton: {
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.status.error,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.status.error,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.xs,
+  },
+  retryButtonDisabled: {
+    opacity: 0.6,
+  },
+  retryButtonText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.text.inverse,
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.medium,
   },
   exportButton: {
     flexDirection: 'row',

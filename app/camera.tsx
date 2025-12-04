@@ -104,25 +104,24 @@ export default function CameraScreen() {
           const asset = await MediaLibrary.createAssetAsync(video.uri);
           console.log('Saved to media library:', asset);
 
-          // Generate filename using session ID
-          const filename = `${params.sessionId}.mp4`;
-
           // Navigate back with parameters (preserve emotionScore)
+          // Pass the full URI from media library for upload
           router.navigate({
             pathname: '/(drawer)',
             params: {
-              videoRecorded: filename,
+              videoRecorded: asset.uri,
+              sessionId: params.sessionId,
               emotionScore: params.currentEmotionScore,
             },
           });
         } catch (libraryError) {
           console.error('Error saving to media library:', libraryError);
-          // Still navigate back even if media library save fails
-          const filename = `${params.sessionId}.mp4`;
+          // Still navigate back even if media library save fails, use original URI
           router.navigate({
             pathname: '/(drawer)',
             params: {
-              videoRecorded: filename,
+              videoRecorded: video.uri,
+              sessionId: params.sessionId,
               emotionScore: params.currentEmotionScore,
             },
           });

@@ -239,33 +239,26 @@ class UploadQueue {
     this.updateItemStatus(item.id, 'uploading');
 
     try {
-      // Parallel upload: upload metadata and video at the same time
-      // since sessionId is generated on frontend
-      const uploadPromises = [
-        uploadSessionMetadata(
-          item.session_id,
-          item.timestamp,
-          item.emotion_score,
-          item.latitude,
-          item.longitude
-        ),
-      ];
-
-      // Add video upload if available
-      if (item.video_uri) {
-        uploadPromises.push(uploadVideoFile(item.session_id, item.video_uri));
-      }
-
-      // Wait for both uploads to complete in parallel
-      const [metadataResponse, videoResponse] = await Promise.all(uploadPromises);
+      // Step 1: Upload metadata first to get the session ID from backend
+      const metadataResponse = await uploadSessionMetadata(
+        item.session_id,
+        item.timestamp,
+        item.emotion_score,
+        item.latitude,
+        item.longitude
+      );
 
       if (!metadataResponse.success) {
         throw new Error(metadataResponse.error || 'Failed to upload metadata');
       }
 
-      // If there's a video, check its response
-      if (item.video_uri && videoResponse && !videoResponse.success) {
-        throw new Error(videoResponse.error || 'Failed to upload video');
+      // Step 2: Upload video using the backend's session ID
+      if (item.video_uri && metadataResponse.data?._id) {
+        const videoResponse = await uploadVideoFile(metadataResponse.data._id, item.video_uri);
+        
+        if (!videoResponse.success) {
+          throw new Error(videoResponse.error || 'Failed to upload video');
+        }
       }
 
       // Mark as completed and persist the upload timestamp

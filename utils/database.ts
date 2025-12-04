@@ -348,6 +348,22 @@ export const getPendingUploads = async (limit?: number, offset: number = 0): Pro
 };
 
 /**
+ * Get all upload queue items (including completed) for status display
+ */
+export const getAllUploadRecords = async (): Promise<UploadQueueRecord[]> => {
+  try {
+    const database = getDatabase();
+    const records = await database.getAllAsync<UploadQueueRecord>(
+      'SELECT * FROM upload_queue ORDER BY created_at DESC'
+    );
+    return records;
+  } catch (error) {
+    console.error('Error getting all upload records:', error);
+    throw error;
+  }
+};
+
+/**
  * Get upload queue item by ID
  */
 export const getUploadQueueItem = async (id: string): Promise<UploadQueueRecord | null> => {
@@ -461,6 +477,19 @@ export const clearCompletedUploads = async (): Promise<void> => {
     await database.runAsync("DELETE FROM upload_queue WHERE status = 'completed'");
   } catch (error) {
     console.error('Error clearing completed uploads:', error);
+    throw error;
+  }
+};
+
+/**
+ * Clear failed uploads from queue
+ */
+export const clearFailedUploads = async (): Promise<void> => {
+  try {
+    const database = getDatabase();
+    await database.runAsync("DELETE FROM upload_queue WHERE status = 'failed'");
+  } catch (error) {
+    console.error('Error clearing failed uploads:', error);
     throw error;
   }
 };
