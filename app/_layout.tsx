@@ -30,7 +30,11 @@ export default function RootLayout() {
         await getOrCreateDeviceId();
 
         // Initialize upload queue
-        await uploadQueue.initialize();
+        try {
+          await uploadQueue.initialize();
+        } catch (queueError) {
+          console.warn('Upload queue init failed (non-blocking):', queueError);
+        }
 
         // Request notification permissions
         await requestNotificationPermissions();

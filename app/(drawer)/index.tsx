@@ -58,9 +58,11 @@ export default function HomeScreen() {
   };
 
   const handleRecordVideo = () => {
+    // Generate session ID before recording (will be used for video filename)
+    const sessionId = uuidv4();
     router.push({
       pathname: '/camera',
-      params: { currentEmotionScore: emotionScore.toString() },
+      params: { currentEmotionScore: emotionScore.toString(), sessionId },
     });
   };
 
@@ -95,9 +97,9 @@ export default function HomeScreen() {
       // Get current location (permission already requested on mount)
       const location = await getCurrentLocation();
 
-      // Generate session timestamp and ID
+      // Extract session ID from videoFilename (format: ${sessionId}.mp4)
+      const sessionId = videoFilename.replace('.mp4', '');
       const timestamp = getLocalISOString();
-      const sessionId = uuidv4();
       const queueId = uuidv4();
 
       // Create session data for local database

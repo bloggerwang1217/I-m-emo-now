@@ -21,7 +21,7 @@ import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 
 export default function CameraScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ currentEmotionScore?: string }>();
+  const params = useLocalSearchParams<{ sessionId?: string; currentEmotionScore?: string }>();
   const cameraRef = useRef<CameraView>(null);
   const [facing, setFacing] = useState<CameraType>('front');
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -104,8 +104,8 @@ export default function CameraScreen() {
           const asset = await MediaLibrary.createAssetAsync(video.uri);
           console.log('Saved to media library:', asset);
 
-          // Generate filename using timestamp
-          const filename = `vlog_${new Date().getTime()}.mp4`;
+          // Generate filename using session ID
+          const filename = `${params.sessionId}.mp4`;
 
           // Navigate back with parameters (preserve emotionScore)
           router.navigate({
@@ -118,7 +118,7 @@ export default function CameraScreen() {
         } catch (libraryError) {
           console.error('Error saving to media library:', libraryError);
           // Still navigate back even if media library save fails
-          const filename = `vlog_${new Date().getTime()}.mp4`;
+          const filename = `${params.sessionId}.mp4`;
           router.navigate({
             pathname: '/(drawer)',
             params: {
