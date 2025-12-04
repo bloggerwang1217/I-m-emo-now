@@ -1,8 +1,7 @@
-import { API_BASE_URL } from '@env';
 import { getDeviceId } from './device';
 
 // API configuration
-// const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
 
 export const API_ENDPOINTS = {
   SESSIONS: `${API_BASE_URL}/sessions`,
