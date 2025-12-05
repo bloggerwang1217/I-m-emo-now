@@ -2,6 +2,10 @@
 
 An experience-sampling mobile app that collects multimodal emotional data through daily check-ins. Inspired by the "Emotions on the Go" study from University of Wisconsin-Madison.
 
+## App URI
+
+🚀 Android Preview Build: https://expo.dev/accounts/bloggerwang1217/projects/Im-emo-now/builds/727ee7a4-e157-4f6d-b8e4-fca5cb64a95f
+
 ## Project Description
 
 **I'm Emo Now** is a React Native mobile application built with Expo that helps users track their emotional states throughout the day. The app prompts users three times daily to:
